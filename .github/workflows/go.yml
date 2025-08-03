@@ -1,24 +1,48 @@
-name: Go CI
+name: Test Coverage
 
-on: [push, pull_request]
+on:
+  pull_request:
+    branches: [ main ]
+
+env:
+  COVERAGE_THRESHOLD: 65
 
 jobs:
-  test:
+  test-coverage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
+      
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.21'
-
-      - name: Get dependencies
-        run: go mod tidy
-
-      - name: Run tests
-        run: go test -v -cover ./...
-
-      - name: Simple coverage check
+          
+      - name: Check dependencies
         run: |
-          go test -cover ./...
+          go mod tidy
+          if ! git diff --exit-code go.mod go.sum; then
+            echo "Зависимости изменены. Зафиксируйте изменения командой: git add go.mod go.sum && git commit -m 'Update dependencies'"
+            exit 1
+          fi
+          
+      - name: Run tests
+        run: |
+          go test -v -coverprofile=profile.cov -coverpkg=./... ./...
+          
+      - name: Verify coverage
+        run: |
+          if [ ! -f profile.cov ]; then
+            echo "Файл покрытия не создан!"
+            exit 1
+          fi
+          
+          COVERAGE=$(go tool cover -func=profile.cov | grep total: | awk '{print $3}' | sed 's/%//')
+          echo "Покрытие тестами: ${COVERAGE}%"
+          
+          if (( $(echo "$COVERAGE < $COVERAGE_THRESHOLD" | bc -l) )); then
+            echo "Покрытие ниже ${COVERAGE_THRESHOLD}%"
+            exit 1
+          else
+            echo "Покрытие соответствует требованиям"
+          fi
