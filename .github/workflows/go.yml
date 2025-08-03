@@ -1,4 +1,5 @@
 name: Go
+
 on: [push, pull_request]
 
 jobs:
@@ -6,8 +7,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v4
         with:
           go-version: '1.21'
-      - run: go mod tidy
-      - run: go test -v ./...
+      
+      - name: Get dependencies
+        run: go mod tidy
+      
+      - name: Run tests with coverage
+        run: |
+          go test -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out
+          
+      - name: Check coverage
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}' | sed 's/%//')
+          echo "Current test coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 65" | bc -l) )); then
+            echo "Coverage is below 65%"
+            exit 1
+          else
+            echo "Coverage is acceptable"
+          fi
