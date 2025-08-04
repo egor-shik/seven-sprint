@@ -1,5 +1,4 @@
 name: Test Coverage
-
 on: [pull_request]
 
 jobs:
@@ -15,19 +14,14 @@ jobs:
           
       - name: Run tests
         run: |
-          go test -v -coverprofile=profile.cov ./...
+          go test -v -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out
           
       - name: Verify coverage
         run: |
-          if [ ! -f profile.cov ]; then
-            echo "Файл покрытия не создан!"
-            exit 1
-          fi
-          
-          COVERAGE=$(go tool cover -func=profile.cov | grep total: | awk '{print $3}' | sed 's/%//')
-          echo "Покрытие: ${COVERAGE}%"
-          
-          if (( $(echo "$COVERAGE < 65" | bc -l) )); then
-            echo "Требуется минимум 65%"
+          COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}' | sed 's/%//')
+          echo "Покрытие: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 100" | bc -l) )); then
+            echo "Требуется 100% покрытие"
             exit 1
           fi
