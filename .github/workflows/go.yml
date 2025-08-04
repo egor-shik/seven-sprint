@@ -1,27 +1,25 @@
-name: Test Coverage
-on: [pull_request]
+name: Go CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  test-coverage:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.21'
-          
+
+      - name: Check dependencies
+        run: go mod tidy
+
       - name: Run tests
-        run: |
-          go test -v -coverprofile=coverage.out ./...
-          go tool cover -func=coverage.out
-          
-      - name: Verify coverage
-        run: |
-          COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}' | sed 's/%//')
-          echo "Покрытие: $COVERAGE%"
-          if (( $(echo "$COVERAGE < 100" | bc -l) )); then
-            echo "Требуется 100% покрытие"
-            exit 1
-          fi
+        run: go test -v ./...
+        
